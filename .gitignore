@@ -1,2 +1,4 @@
 /.vscode
-/CPS511A2.xcodeproj/*
+/CPS511A2.xcodeproj*
+output
+*.o
