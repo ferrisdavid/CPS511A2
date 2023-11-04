@@ -221,9 +221,15 @@ void initSubdivisionCurve()
 	y = 2 * sin(M_PI*0.0);
 	subcurve.controlPoints[2].x = x;
 	subcurve.controlPoints[2].y = y;
+    
+    x = 2 * cos(M_PI*0.5);
+    y = 2 * sin(M_PI);
+    subcurve.controlPoints[3].x = x;
+    subcurve.controlPoints[3].y = y;
 	
-	subcurve.numControlPoints = 3;
-	subcurve.subdivisionSteps = 3;
+    // Default to 3 Control Points
+	subcurve.numControlPoints = 2;
+	subcurve.subdivisionSteps = 5;
 }
 
 
@@ -265,6 +271,7 @@ void worldToCameraCoordiantes(GLdouble xWorld, GLdouble yWorld, GLdouble *xcam, 
 }
 
 int currentButton;
+int currentModifier;
 
 void mouseButtonHandler2D(int button, int state, int xMouse, int yMouse)
 {
@@ -364,7 +371,21 @@ void specialKeyHandler2D(int key, int x, int y)
 		// See function initSubdivisionCurve and drawSubdivisionCurve() to help you with the functionality
 		// increase the number of control points by 1
 		// if the number of control points is > 4, set to 4
-		// recompute the subdivision curve (see function drawSubdivisionCurve() to see how it calls 
+        if (subcurve.numControlPoints < 4) {
+            // Increase number of control points
+            subcurve.numControlPoints  = subcurve.numControlPoints + 1;
+            // Compute Subdivision Curve
+            computeSubdivisionCurve(&subcurve);
+            // Re-initialize Control Point Circles
+            initControlPointCircles();
+            
+            // Set Boolean Flags to false.
+            indicesArrayAllocated = false;
+            quadArrayAllocated = false;
+            varrayAllocated = false;
+        }
+        
+		// recompute the subdivision curve (see function drawSubdivisionCurve() to see how it calls
 		// computeSubdivisionCurve() )
 		// reinitialize the control point circles (see function initSubdivisionCurve())
 		// set boolean variables indicesArrayAllocated, quadArrayAllocated, varrayAllocated  to false
@@ -376,6 +397,21 @@ void specialKeyHandler2D(int key, int x, int y)
 		// recompute the subdivision curve (see function)
 		// reinitialize the control point circles (see function)
 		// set boolean variables indicesArrayAllocated, quadArrayAllocated, varrayAllocated  to false
+            
+        // If number of control points > 2, then decrement (min is 2).
+        if (subcurve.numControlPoints > 2) {
+            // Increase number of control points
+            subcurve.numControlPoints  = subcurve.numControlPoints - 1;
+            // Compute Subdivision Curve
+            computeSubdivisionCurve(&subcurve);
+            // Re-initialize Control Point Circles
+            initControlPointCircles();
+            
+            // Set Boolean Flags to false.
+            indicesArrayAllocated = false;
+            quadArrayAllocated = false;
+            varrayAllocated = false;
+        }
 		break;
 	}
 	glutPostRedisplay();
@@ -426,7 +462,7 @@ GLfloat light_diffuse1[] = { 1.0, 1.0, 1.0, 1.0 };
 GLfloat light_specular[] = { 1.0, 1.0, 1.0, 1.0 };
 GLfloat model_ambient[] = { 0.5, 0.5, 0.5, 1.0 };
 
-// 
+// Global Rotation/Scale Variables.
 GLdouble spin = 0.0;
 GLdouble spinX = 0.0;
 GLdouble spinY = 0.0;
@@ -772,6 +808,7 @@ Vector3D normalize(Vector3D a)
 void mouseButtonHandler3D(int button, int state, int x, int y)
 {
 	currentButton = button;
+	currentModifier = glutGetModifiers();
 	lastMouseX = x;
 	lastMouseY = y;
 	switch (button)
@@ -800,14 +837,30 @@ void mouseMotionHandler3D(int x, int y)
 	// REQUIREMENT 3 code here
 	if (currentButton == GLUT_LEFT_BUTTON)
 	{
-		if (glutGetModifiers() == GLUT_ACTIVE_SHIFT)
+		if (glutGetModifiers() == GLUT_ACTIVE_SHIFT || currentModifier == GLUT_ACTIVE_SHIFT)
 		{
-
+            // Handle Camera Elevation Rotation.
+            if (dy > 0 && spinX < 80) {
+                spinX += 1;
+            }
+            else if (dy < 0 && spinX > 0) {
+                spinX -= 1;
+            }
 		}
 		else
 		{
-
+            // Handle Camera Rotation Around Y Axis.
+            if (dx < 0){
+                spinY += 1;
+            }
+            else {
+                spinY -= 1;
+            }
 		}
+		// Calculate Camera X,Y,Z for Rotations
+        eyeX = radius * cos(spinY*(M_PI/180.0));
+        eyeY = radius * sin(spinX*(M_PI/180.0));
+        eyeZ = radius * sin(spinY*(M_PI/180.0));
 	}
 	// REQUIREMENT 2 code here
 	if (currentButton == GLUT_RIGHT_BUTTON)
@@ -818,7 +871,15 @@ void mouseMotionHandler3D(int x, int y)
 		}
 		else
 		{
-
+            // Handle Right Click Z Scaling
+            if (dy < 0 && scale > 0.1) {
+                // Decrease Z Scale Factor when Sliding Inwards (up)
+                scale -= 0.1;
+            }
+            if (dy > 0 && scale < 1.5) {
+                // Increase Z Scale Factor when Sliding Outwards (down)
+                scale += 0.1;
+            }
 		}
 	}
 	else if (currentButton == GLUT_MIDDLE_BUTTON)
@@ -895,10 +956,10 @@ void buildVertexArray()
 			varray[row*NUMBEROFSIDES + col].numQuads = 0;
 			varray[row*NUMBEROFSIDES + col].y = subcurve.curvePoints[row].y;
 			varray[row*NUMBEROFSIDES + col].x = newVector.x;
-			varray[row*NUMBEROFSIDES + col].z = newVector.z;	
+			varray[row*NUMBEROFSIDES + col].z = newVector.z * scale;
 			positions[row*NUMBEROFSIDES + col].y = subcurve.curvePoints[row].y;
 			positions[row*NUMBEROFSIDES + col].x = newVector.x;
-			positions[row*NUMBEROFSIDES + col].z = newVector.z;
+			positions[row*NUMBEROFSIDES + col].z = newVector.z * scale;
 
 			cumulativeTheta += theta;
 		}
