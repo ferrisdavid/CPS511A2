@@ -228,8 +228,8 @@ void initSubdivisionCurve()
     subcurve.controlPoints[3].y = y;
 	
     // Default to 3 Control Points
-	subcurve.numControlPoints = 2;
-	subcurve.subdivisionSteps = 5;
+	subcurve.numControlPoints = 3;
+	subcurve.subdivisionSteps = 3;
 }
 
 
@@ -560,7 +560,7 @@ void init3DSurfaceWindow()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	gluLookAt(0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	myLookAt(myModelView, 0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	// REPLACE call to gluLookAt with myLookAt(0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 }
 
@@ -575,7 +575,8 @@ void reshape3D(int w, int h)
 	gluPerspective(fov,aspect,zNear,zFar);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+
+    myLookAt(myModelView, 0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	// REPLACE call to gluLookAt with myLookAt(0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 }
 
@@ -586,7 +587,8 @@ void display3D()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	// Set up the Viewing Transformation (V matrix)	
-	gluLookAt(eyeX, eyeY, eyeZ, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+
+	myLookAt(myModelView, eyeX, eyeY, eyeZ, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	// REPLACE call to gluLookAt with myLookAt(eyeX, eyeY, eyeZ, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
 	drawGround();
@@ -613,9 +615,7 @@ void display3D()
 	else
 	{
 		// Write drawMeshVBO() and replace call to drawQuads()
-		// drawMeshVBO(); // REQUIREMENT 5
-		// drawTris();
-		drawQuads();
+		 drawMeshVBO(); // REQUIREMENT 5
 	}
 
 	glPopMatrix();
@@ -649,7 +649,39 @@ unsigned int VBOv, VBOn, VBOi;
 // Write code to use VBOs (or a VAO and VBOs) to draw the mesh with glDrawElements().
 void drawMeshVBO()
 {
+	// Solution using strictly VBOs
+	printf("Num Vertices: %d , Num Indices: %d", numVertices, numIndices);
+    
+    // Generate Buffer Objects.
+    glGenBuffers(1, &VBOv);
+    glGenBuffers(1, &VBOn);
+    glGenBuffers(1, &VBOi);
 
+    // Assign Vertex Positions VBO.
+    glBindBuffer(GL_ARRAY_BUFFER, VBOv);
+	glBufferData(GL_ARRAY_BUFFER, numVertices * sizeof(Vector3D), positions, GL_DYNAMIC_DRAW);
+	glVertexPointer(3, GL_FLOAT, 0, 0);
+	glEnableClientState(GL_VERTEX_ARRAY);
+
+	// Assign Vertex Normals VBO.
+	glBindBuffer(GL_ARRAY_BUFFER, VBOn);
+	glBufferData(GL_ARRAY_BUFFER, numVertices * sizeof(Vector3D), normals, GL_DYNAMIC_DRAW);
+	glNormalPointer(GL_FLOAT, 0, 0);
+	glEnableClientState(GL_NORMAL_ARRAY);
+
+	// Assign Vertex Indices VBO.
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBOi);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, numIndices * sizeof(GLuint), indices, GL_DYNAMIC_DRAW);
+
+	// Draw VBO Elements using Indices
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBOi);
+	glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+
+	// Disable and Unbind Buffers.
+	glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 
@@ -846,6 +878,8 @@ void mouseMotionHandler3D(int x, int y)
             else if (dy < 0 && spinX > 0) {
                 spinX -= 1;
             }
+            // Calculate Camera Y for Rotation
+            eyeY = radius * sin(spinX*(M_PI/180.0));
 		}
 		else
 		{
@@ -856,11 +890,10 @@ void mouseMotionHandler3D(int x, int y)
             else {
                 spinY -= 1;
             }
+            // Calculate Camera X,Z for Rotations
+            eyeX = radius * cos(spinY*(M_PI/180.0));
+            eyeZ = radius * sin(spinY*(M_PI/180.0));
 		}
-		// Calculate Camera X,Y,Z for Rotations
-        eyeX = radius * cos(spinY*(M_PI/180.0));
-        eyeY = radius * sin(spinX*(M_PI/180.0));
-        eyeZ = radius * sin(spinY*(M_PI/180.0));
 	}
 	// REQUIREMENT 2 code here
 	if (currentButton == GLUT_RIGHT_BUTTON)
@@ -962,6 +995,7 @@ void buildVertexArray()
 			positions[row*NUMBEROFSIDES + col].z = newVector.z * scale;
 
 			cumulativeTheta += theta;
+			numVertices += 1;
 		}
 	}
 }
@@ -1120,6 +1154,7 @@ void BuildTriangleIndexArray()
 	printf("Number of quads = %u\n", (subcurve.numCurvePoints - 1)*NUMBEROFSIDES);
 	printf("Number of tris = %u\n", (subcurve.numCurvePoints - 1)*NUMBEROFSIDES*2);
 	printf("Number of indices = %u\n", vi);
+	numIndices = vi;
 
 }
 
@@ -1263,7 +1298,32 @@ void myLookAt(float *viewMatrix,
 	float centerX, float centerY, float centerZ,
 	float upX, float upY, float upZ) 
 {
+    float upVec[3] = {upX, upY, upZ};
+    
+    // n coordinate axis.
+    float n[3] = { eyeX - centerX,  eyeY - centerY, eyeZ - centerZ};
+    
+    // u coordinate axis.
+    float u[3] = {0.0, 0.0, 0.0};
+    vec3Cross(upVec, n, u);
+    
+    // Normalize n and u.
+    vec3Normalize(n);
+    vec3Normalize(u);
+    
+    // v coordinate axis.
+    float v[3] = {0.0, 0.0, 0.0};
+    vec3Cross(n, u, v);
+    
+    float rotation[16] = {u[0], v[0], n[0], 0.0, u[1], v[1], n[1], 0.0,  u[2], v[2], n[2], 0.0 , 0.0, 0.0, 0.0, 1.0};
+    
+    // Translation.
+    float translation[16] = { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -eyeX, -eyeY, -eyeZ, 1.0 };
+    
+	// View Matrix
+    mat4Multiply(rotation, translation, viewMatrix);
 
-	
+	// Multiply View Matrix to CTM
+	glMultMatrixf(viewMatrix);
 }
 
