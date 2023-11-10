@@ -369,12 +369,11 @@ void specialKeyHandler2D(int key, int x, int y)
 	case GLUT_KEY_UP:
 		// REQUIREMENT 1
 		// See function initSubdivisionCurve and drawSubdivisionCurve() to help you with the functionality
-		// increase the number of control points by 1
-		// if the number of control points is > 4, set to 4
+		// increase the number of control points by 1 (up to max of 4)
         if (subcurve.numControlPoints < 4) {
             // Increase number of control points
             subcurve.numControlPoints  = subcurve.numControlPoints + 1;
-            // Compute Subdivision Curve
+            // ReCompute Subdivision Curve
             computeSubdivisionCurve(&subcurve);
             // Re-initialize Control Point Circles
             initControlPointCircles();
@@ -384,25 +383,14 @@ void specialKeyHandler2D(int key, int x, int y)
             quadArrayAllocated = false;
             varrayAllocated = false;
         }
-        
-		// recompute the subdivision curve (see function drawSubdivisionCurve() to see how it calls
-		// computeSubdivisionCurve() )
-		// reinitialize the control point circles (see function initSubdivisionCurve())
-		// set boolean variables indicesArrayAllocated, quadArrayAllocated, varrayAllocated  to false
 		break;
 	case GLUT_KEY_DOWN:
-		// REQUIREMENT 1
-		// decrease the number of control points by 1
-		// if the number of control points is < 2, set to 2
-		// recompute the subdivision curve (see function)
-		// reinitialize the control point circles (see function)
-		// set boolean variables indicesArrayAllocated, quadArrayAllocated, varrayAllocated  to false
-            
+		// REQUIREMENT 1    
         // If number of control points > 2, then decrement (min is 2).
         if (subcurve.numControlPoints > 2) {
-            // Increase number of control points
+            // Decrease number of control points
             subcurve.numControlPoints  = subcurve.numControlPoints - 1;
-            // Compute Subdivision Curve
+            // ReCompute Subdivision Curve
             computeSubdivisionCurve(&subcurve);
             // Re-initialize Control Point Circles
             initControlPointCircles();
@@ -560,6 +548,7 @@ void init3DSurfaceWindow()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
+	// Camera Set Up using myLookAt (Requirement 4)
 	myLookAt(myModelView, 0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	// REPLACE call to gluLookAt with myLookAt(0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 }
@@ -576,6 +565,7 @@ void reshape3D(int w, int h)
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
+	// Camera Set Up using myLookAt (Requirement 4)
     myLookAt(myModelView, 0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	// REPLACE call to gluLookAt with myLookAt(0.0, 3.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 }
@@ -586,8 +576,9 @@ void display3D()
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	// Set up the Viewing Transformation (V matrix)	
 
+	// Set up the Viewing Transformation (V matrix)	
+	// Camera Set Up using myLookAt (Requirement 4)
 	myLookAt(myModelView, eyeX, eyeY, eyeZ, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	// REPLACE call to gluLookAt with myLookAt(eyeX, eyeY, eyeZ, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
@@ -615,7 +606,7 @@ void display3D()
 	else
 	{
 		// Write drawMeshVBO() and replace call to drawQuads()
-		 drawMeshVBO(); // REQUIREMENT 5
+		drawMeshVBO(); // REQUIREMENT 5
 	}
 
 	glPopMatrix();
@@ -650,7 +641,6 @@ unsigned int VBOv, VBOn, VBOi;
 void drawMeshVBO()
 {
 	// Solution using strictly VBOs
-	printf("Num Vertices: %d , Num Indices: %d", numVertices, numIndices);
     
     // Generate Buffer Objects.
     glGenBuffers(1, &VBOv);
@@ -872,22 +862,24 @@ void mouseMotionHandler3D(int x, int y)
 		if (glutGetModifiers() == GLUT_ACTIVE_SHIFT || currentModifier == GLUT_ACTIVE_SHIFT)
 		{
             // Handle Camera Elevation Rotation.
-            if (dy > 0 && spinX < 80) {
-                spinX += 1;
+            if (dy > 0 && rotation < 80) {
+                rotation += 1;
             }
-            else if (dy < 0 && spinX > 0) {
-                spinX -= 1;
+            else if (dy < 0 && rotation > 0) {
+                rotation -= 1;
             }
             // Calculate Camera Y for Rotation
-            eyeY = radius * sin(spinX*(M_PI/180.0));
+            eyeY = radius * sin(rotation*(M_PI/180.0));
 		}
 		else
 		{
             // Handle Camera Rotation Around Y Axis.
             if (dx < 0){
+				// Increment spinY as rotation is around Y Axis.
                 spinY += 1;
             }
             else {
+				// Decrement spinY as rotation is around Y Axis.
                 spinY -= 1;
             }
             // Calculate Camera X,Z for Rotations
@@ -995,6 +987,7 @@ void buildVertexArray()
 			positions[row*NUMBEROFSIDES + col].z = newVector.z * scale;
 
 			cumulativeTheta += theta;
+			// Increment Num Vertices.
 			numVertices += 1;
 		}
 	}
@@ -1154,6 +1147,8 @@ void BuildTriangleIndexArray()
 	printf("Number of quads = %u\n", (subcurve.numCurvePoints - 1)*NUMBEROFSIDES);
 	printf("Number of tris = %u\n", (subcurve.numCurvePoints - 1)*NUMBEROFSIDES*2);
 	printf("Number of indices = %u\n", vi);
+
+	// Update numIndices.
 	numIndices = vi;
 
 }
@@ -1315,9 +1310,10 @@ void myLookAt(float *viewMatrix,
     float v[3] = {0.0, 0.0, 0.0};
     vec3Cross(n, u, v);
     
+	// Rotation Transformation Matrix.
     float rotation[16] = {u[0], v[0], n[0], 0.0, u[1], v[1], n[1], 0.0,  u[2], v[2], n[2], 0.0 , 0.0, 0.0, 0.0, 1.0};
     
-    // Translation.
+    // Translation Transformation Matrix.
     float translation[16] = { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -eyeX, -eyeY, -eyeZ, 1.0 };
     
 	// View Matrix
