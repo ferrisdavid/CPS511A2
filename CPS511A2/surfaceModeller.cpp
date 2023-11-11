@@ -222,6 +222,7 @@ void initSubdivisionCurve()
 	subcurve.controlPoints[2].x = x;
 	subcurve.controlPoints[2].y = y;
     
+	// Added 4th Control Point.
     x = 2 * cos(M_PI*0.5);
     y = 2 * sin(M_PI);
     subcurve.controlPoints[3].x = x;
@@ -369,6 +370,7 @@ void specialKeyHandler2D(int key, int x, int y)
 	case GLUT_KEY_UP:
 		// REQUIREMENT 1
 		// See function initSubdivisionCurve and drawSubdivisionCurve() to help you with the functionality
+		// See function initSubdivisionCurve for the declaration of the 4th control point
 		// increase the number of control points by 1 (up to max of 4)
         if (subcurve.numControlPoints < 4) {
             // Increase number of control points
